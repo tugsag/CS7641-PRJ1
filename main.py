@@ -50,8 +50,8 @@ def plot_lc(estimator, title, X, y, axes=None, ylim=None, cv=None, n_jobs=None, 
 
     plt.savefig(path)
 
-def plot_vc(estimator, X, y, title, param_name, xlabel, param_range, cv, path=None):
-    train_score, test_score = validation_curve(estimator, X, y, param_name=param_name, param_range=param_range, cv=cv, scoring='f1', n_jobs=8)
+def plot_vc(estimator, X, y, title, param_name, xlabel, param_range, scoring, cv, path=None):
+    train_score, test_score = validation_curve(estimator, X, y, param_name=param_name, param_range=param_range, cv=cv, scoring=scoring, n_jobs=8)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel('Score')
@@ -89,12 +89,17 @@ def dt(d, id=None):
     ccp_alpha = [.005, .003, .002, .001]
     grid = dict(criterion=criterion, max_depth=max_depth, ccp_alpha=ccp_alpha)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring='f1', error_score=0)
+    if id=='E':
+        scoring = 'f1'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
+    else:
+        scoring = 'accuracy'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
 
-    print("Best f1 {} using params {}".format(result.best_score_, best_params))
+    print("Best {} {} using params {}".format(scoring, result.best_score_, best_params))
 
     # ccpAlphas
     path = model.cost_complexity_pruning_path(X_train, y_train)
@@ -107,7 +112,7 @@ def dt(d, id=None):
 
     # validation curve
     param_range = np.linspace(ccp_alphas[0], ccp_alphas[-1], num=20)
-    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'ccp_alpha', 'ccp_alphas', param_range, cv=cv, path='figures/DT_{}_Best_valid.png'.format(id))
+    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'ccp_alpha', 'ccp_alphas', param_range, scoring, cv=cv, path='figures/DT_{}_Best_valid.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -149,12 +154,17 @@ def svm(d, id=None):
     C = [.001, .01, .1, 1, 10, 100, 1000]
     gamma = ['scale']
     grid = dict(kernel=kernel, C=C, gamma=gamma)
-    out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='f1', n_jobs=8, error_score=0, verbose=5)
+    if id == 'E':
+        scoring = 'f1'
+        out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='f1', n_jobs=8, error_score=0)
+    else:
+        scoring = 'accuracy'
+        out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='accuracy', n_jobs=8, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
 
-    print("Best {} using params {}".format(result.best_score_, result.best_params_))
+    print("Best {} {} using params {}".format(scoring, result.best_score_, result.best_params_))
 
     # learning curve
     plot_lc(best_model,'Learning Curve - Best Model', X_train, y_train, cv=cv, n_jobs=-1, path='figures/SVM_{}_Best_learning.png'.format(id))
@@ -162,7 +172,7 @@ def svm(d, id=None):
 
     # validation_curve
     param_range = np.logspace(-3, 3, 10)
-    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'C', 'C', param_range, cv=cv, path='figures/SVM_{}_Best_valid.png'.format(id))
+    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'C', 'C', param_range, scoring, cv=cv, path='figures/SVM_{}_Best_valid.png'.format(id))
     plt.clf()
 
     # C = 1
@@ -211,13 +221,17 @@ def knn(d, id=None):
     weights = ['uniform', 'distance']
     metric = ['euclidean', 'manhattan', 'minkowski']
     grid = dict(n_neighbors=n_neighbors, weights=weights, metric=metric)
-    # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring='f1', error_score=0)
+    if id == 'E':
+        scoring = 'f1'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
+    else:
+        scoring = 'accuracy'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
 
-    print("Best {} using params {}".format(result.best_score_, result.best_params_))
+    print("Best {} {} using params {}".format(scoring, result.best_score_, result.best_params_))
 
     # learning curve
     plot_lc(best_model, 'Learning Curve - Best Model', X_train, y_train, cv=cv, n_jobs=-1, path='figures/KNN_{}_Best_learning.png'.format(id))
@@ -225,7 +239,7 @@ def knn(d, id=None):
 
     # validation_curve
     param_range = np.arange(1, 21)
-    plot_vc(model_naive, X_train, y_train, 'Validation Curve', 'n_neighbors', '# Neighbors', param_range, cv=cv, path='figures/KNN_{}_Best_valid.png'.format(id))
+    plot_vc(model_naive, X_train, y_train, 'Validation Curve', 'n_neighbors', '# Neighbors', param_range, scoring, cv=cv, path='figures/KNN_{}_Best_valid.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -258,30 +272,36 @@ def gb(d, id=None):
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
-    plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=8, path='figures/GB_{}_Default_learning.png'.format(id))
+    plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=12, path='figures/GB_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
 
     model = GradientBoostingClassifier(random_state=SEED)
     n_estimators = [50, 100, 200, 300, 500]
-    max_depth = range(1, 15, 2)
+    max_depth = np.arange(1, 11, 2)
     learning_rate = [.01, .1, .5]
     grid = dict(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring='f1', error_score=0, verbose=5)
+    if id == 'E':
+        scoring = 'f1'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring=scoring, error_score=0, verbose=5)
+    else:
+        scoring = 'accuracy'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring=scoring, error_score=0, verbose=5)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
 
-    print("Best {} using params {}".format(result.best_score_, result.best_params_))
+    print("Best {} {} using params {}".format(scoring, result.best_score_, result.best_params_))
+    # best_model = GradientBoostingClassifier(ccp_alpha=.001, learning_rate=.1, n_estimators=50, random_state=SEED)
 
     # learning curve
-    plot_lc(best_model, 'Learning Cuve - Best Model', X_train, y_train, cv=cv, n_jobs=8, path='figures/GB_{}_Best_learning.png'.format(id))
+    plot_lc(best_model, 'Learning Cuve - Best Model', X_train, y_train, cv=cv, n_jobs=12, path='figures/GB_{}_Best_learning.png'.format(id))
     plt.clf()
 
     # validation_curve
-    param_range = np.arange(1, 15)
-    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'max_depth', 'Max Depth', param_range, cv=cv, path='figures/GB_{}_Best_valid_depth.png'.format(id))
+    param_range = max_depth
+    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'ccp_alpha', 'ccp_alphas', param_range, scoring, cv=cv, path='figures/GB_{}_Best_valid.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -325,12 +345,17 @@ def nn(d, id=None):
     alpha = [.0001, .001, .01, .1, .2]
     grid = dict(hidden_layer_sizes=hidden_layer_sizes, activation=activation, alpha=alpha)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring='f1', error_score=0)
+    if id == 'E':
+        scoring = 'f1'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring=scoring, error_score=0)
+    else:
+        scoring = 'accuracy'
+        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
 
-    print("Best {} using params {}".format(result.best_score_, result.best_params_))
+    print("Best {} {} using params {}".format(scoring, result.best_score_, result.best_params_))
 
     # learning curve
     plot_lc(best_model, 'Learning Cuve - Best Model', X_train, y_train, cv=cv, n_jobs=8, path='figures/ANN_{}_Best_learning.png'.format(id))
@@ -338,7 +363,7 @@ def nn(d, id=None):
 
     # validation_curve
     param_range = np.linspace(.0001, .2, 10)
-    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'alpha', 'Alphas', param_range, cv=cv, path='figures/ANN_{}_Best_valid.png'.format(id))
+    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'alpha', 'Alphas', param_range, scoring, cv=cv, path='figures/ANN_{}_Best_valid.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -358,7 +383,8 @@ def nn(d, id=None):
 
 if __name__ == "__main__":
     d1 = pd.read_csv('epilepsy/epilepsy.csv')
-    d2 = pd.read_csv('pulsar/pulsar_stars.csv')
+    # d2 = pd.read_csv('pulsar/pulsar_stars.csv')
+    d3 = pd.read_csv('gamma/gamma.csv')
 
     # preprocess epilepsy data
     temp = np.array(d1['y'].values.tolist())
@@ -366,7 +392,14 @@ if __name__ == "__main__":
     d1 = d1.drop('Unnamed', axis=1)
 
     # preprocess pulsar data
-    d2 = d2.rename(columns={'target_class': 'y'})
+    # d2 = d2.rename(columns={'target_class': 'y'})
+
+    # # preprocess gamma data
+    d3 = d3.rename(columns={'class': 'y'})
+    d3 = d3.drop(d3.columns[0], axis=1)
+    m = {'g': 1, 'h': 0}
+    d3['y'] = d3['y'].map(m)
+
 
     x = input('''Choose algorithm:
                     Decision tree: DT
@@ -376,31 +409,41 @@ if __name__ == "__main__":
                     ANN: ANN ''')
     y = input('''Choose dataset:
                     epilepsy: E
-                    pulsar: P ''')
+                    gamma: G ''')
 
     if x == 'DT':
         if y == 'E':
             dt(d1, id=y)
+        elif y == 'G':
+            dt(d3, id=y)
         else:
             dt(d2, id=y)
     elif x == 'SVM':
         if y == 'E':
             svm(d1, id=y)
+        elif y == 'G':
+            svm(d3, id=y)
         else:
             svm(d2, id=y)
     elif x == 'B':
         if y == 'E':
             gb(d1, id=y)
+        elif y == 'G':
+            gb(d3, id=y)
         else:
             gb(d2, id=y)
     elif x == 'KNN':
         if y == 'E':
             knn(d1, id=y)
+        elif y == 'G':
+            knn(d3, id=y)
         else:
             knn(d2, id=y)
     elif x == 'ANN':
         if y == 'E':
             nn(d1, id=y)
+        elif y == 'G':
+            nn(d3, id=y)
         else:
             nn(d2, id=y)
     else:
