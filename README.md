@@ -10,6 +10,7 @@ Choose algorithm:
                  KNN: KNN
                  ANN: ANN 
                  
+Enter anything other than the given choices to exit without running the algorithms. 
 After choosing the algorithm, another option to choose the dataset will appear:
 
 Choose dataset:
