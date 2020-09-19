@@ -5,7 +5,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.model_selection import train_test_split, learning_curve, validation_curve, StratifiedKFold, GridSearchCV, StratifiedShuffleSplit
-from sklearn.metrics import confusion_matrix, accuracy_score, classification_report, plot_confusion_matrix, f1_score
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report, plot_confusion_matrix, f1_score, plot_roc_curve, roc_auc_score
 from itertools import product
 import pandas as pd
 import numpy as np
@@ -72,6 +72,10 @@ def dt(d, id=None):
         test_set = d.loc[j]
     y_train, y_test = train_set['y'], test_set['y']
     X_train, X_test = train_set.drop('y', axis=1), test_set.drop('y', axis=1)
+    if id=='E':
+        scoring = 'f1'
+    else:
+        scoring = 'roc_auc'
 
     model_naive = DecisionTreeClassifier()
     model_naive.fit(X_train, y_train)
@@ -79,6 +83,7 @@ def dt(d, id=None):
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
+    print('roc_auc of default is: ', roc_auc_score(y_test, pred))
     plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=-1, path='figures/DT_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
@@ -89,12 +94,7 @@ def dt(d, id=None):
     ccp_alpha = [.005, .003, .002, .001]
     grid = dict(criterion=criterion, max_depth=max_depth, ccp_alpha=ccp_alpha)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    if id=='E':
-        scoring = 'f1'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
-    else:
-        scoring = 'accuracy'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
+    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
@@ -113,6 +113,10 @@ def dt(d, id=None):
     # validation curve
     param_range = np.linspace(ccp_alphas[0], ccp_alphas[-1], num=20)
     plot_vc(best_model, X_train, y_train, 'Validation Curve', 'ccp_alpha', 'ccp_alphas', param_range, scoring, cv=cv, path='figures/DT_{}_Best_valid.png'.format(id))
+    plt.clf()
+
+    plot_roc_curve(best_model, X_test, y_test)
+    plt.savefig('figures/DT_{}_ROC.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -139,12 +143,18 @@ def svm(d, id=None):
     y_train, y_test = train_set['y'], test_set['y']
     X_train, X_test = train_set.drop('y', axis=1), test_set.drop('y', axis=1)
 
+    if id == 'E':
+        scoring = 'f1'
+    else:
+        scoring = 'roc_auc'
+
     model_naive = SVC()
     model_naive.fit(X_train, y_train)
     pred = model_naive.predict(X_test)
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
+    print('roc_auc of default is: ', roc_auc_score(y_test, pred))
     plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=-1, path='figures/SVM_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
@@ -154,12 +164,7 @@ def svm(d, id=None):
     C = [.001, .01, .1, 1, 10, 100, 1000]
     gamma = ['scale']
     grid = dict(kernel=kernel, C=C, gamma=gamma)
-    if id == 'E':
-        scoring = 'f1'
-        out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='f1', n_jobs=8, error_score=0)
-    else:
-        scoring = 'accuracy'
-        out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='accuracy', n_jobs=8, error_score=0)
+    out = GridSearchCV(estimator=model, param_grid=grid, cv=cv, scoring='f1', n_jobs=8, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
@@ -173,6 +178,10 @@ def svm(d, id=None):
     # validation_curve
     param_range = np.logspace(-3, 3, 10)
     plot_vc(best_model, X_train, y_train, 'Validation Curve', 'C', 'C', param_range, scoring, cv=cv, path='figures/SVM_{}_Best_valid.png'.format(id))
+    plt.clf()
+
+    plot_roc_curve(best_model, X_test, y_test)
+    plt.savefig('figures/SVM_{}_ROC.png'.format(id))
     plt.clf()
 
     # C = 1
@@ -205,12 +214,18 @@ def knn(d, id=None):
     y_train, y_test = train_set['y'], test_set['y']
     X_train, X_test = train_set.drop('y', axis=1), test_set.drop('y', axis=1)
 
+    if id == 'E':
+        scoring = 'f1'
+    else:
+        scoring = 'roc_auc'
+
     model_naive = KNeighborsClassifier()
     model_naive.fit(X_train, y_train)
     pred = model_naive.predict(X_test)
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
+    print('roc_auc of default is: ', roc_auc_score(y_test, pred))
     plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=-1, path='figures/KNN_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
@@ -221,12 +236,7 @@ def knn(d, id=None):
     weights = ['uniform', 'distance']
     metric = ['euclidean', 'manhattan', 'minkowski']
     grid = dict(n_neighbors=n_neighbors, weights=weights, metric=metric)
-    if id == 'E':
-        scoring = 'f1'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
-    else:
-        scoring = 'accuracy'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
+    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=-1, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
@@ -240,6 +250,10 @@ def knn(d, id=None):
     # validation_curve
     param_range = np.arange(1, 21)
     plot_vc(model_naive, X_train, y_train, 'Validation Curve', 'n_neighbors', '# Neighbors', param_range, scoring, cv=cv, path='figures/KNN_{}_Best_valid.png'.format(id))
+    plt.clf()
+
+    plot_roc_curve(best_model, X_test, y_test)
+    plt.savefig('figures/KNN_{}_ROC.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -266,12 +280,18 @@ def gb(d, id=None):
     y_train, y_test = train_set['y'], test_set['y']
     X_train, X_test = train_set.drop('y', axis=1), test_set.drop('y', axis=1)
 
+    if id == 'E':
+        scoring = 'f1'
+    else:
+        scoring = 'roc_auc'
+
     model_naive = GradientBoostingClassifier()
     model_naive.fit(X_train, y_train)
     pred = model_naive.predict(X_test)
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
+    print('roc_auc of default is: ', roc_auc_score(y_test, pred))
     plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=12, path='figures/GB_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
@@ -282,12 +302,7 @@ def gb(d, id=None):
     learning_rate = [.01, .1, .5]
     grid = dict(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    if id == 'E':
-        scoring = 'f1'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring=scoring, error_score=0, verbose=5)
-    else:
-        scoring = 'accuracy'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring=scoring, error_score=0, verbose=5)
+    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=16, cv=cv, scoring=scoring, error_score=0, verbose=5)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
@@ -301,7 +316,11 @@ def gb(d, id=None):
 
     # validation_curve
     param_range = max_depth
-    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'ccp_alpha', 'ccp_alphas', param_range, scoring, cv=cv, path='figures/GB_{}_Best_valid.png'.format(id))
+    plot_vc(best_model, X_train, y_train, 'Validation Curve', 'max_depth', 'Max Depth', param_range, scoring, cv=cv, path='figures/GB_{}_Best_valid.png'.format(id))
+    plt.clf()
+
+    plot_roc_curve(best_model, X_test, y_test)
+    plt.savefig('figures/GB_{}_ROC.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
@@ -329,12 +348,18 @@ def nn(d, id=None):
     y_train, y_test = train_set['y'], test_set['y']
     X_train, X_test = train_set.drop('y', axis=1), test_set.drop('y', axis=1)
 
+    if id == 'E':
+        scoring = 'f1'
+    else:
+        scoring = 'roc_auc'
+
     model_naive = MLPClassifier()
     model_naive.fit(X_train, y_train)
     pred = model_naive.predict(X_test)
     cv = StratifiedKFold(n_splits=5, random_state=SEED, shuffle=True)
     print('Accuracy of default model is: ', accuracy_score(y_test, pred))
     print('F1 of default model is: ', f1_score(y_test, pred))
+    print('roc_auc of default is: ', roc_auc_score(y_test, pred))
     plot_lc(model_naive, 'Learning Curve - Default Model', X_train, y_train, cv=cv, n_jobs=8, path='figures/ANN_{}_Default_learning.png'.format(id))
     plt.clf()
     print('plot saved')
@@ -345,12 +370,7 @@ def nn(d, id=None):
     alpha = [.0001, .001, .01, .1, .2]
     grid = dict(hidden_layer_sizes=hidden_layer_sizes, activation=activation, alpha=alpha)
     # cv = KFold(n_splits=3, random_state=SEED, shuffle=True)
-    if id == 'E':
-        scoring = 'f1'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring=scoring, error_score=0)
-    else:
-        scoring = 'accuracy'
-        out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring=scoring, error_score=0)
+    out = GridSearchCV(estimator=model, param_grid=grid, n_jobs=8, cv=cv, scoring=scoring, error_score=0)
     result = out.fit(X_train, y_train)
     best_model = result.best_estimator_
     best_params = result.best_params_
@@ -364,6 +384,10 @@ def nn(d, id=None):
     # validation_curve
     param_range = np.linspace(.0001, .2, 10)
     plot_vc(best_model, X_train, y_train, 'Validation Curve', 'alpha', 'Alphas', param_range, scoring, cv=cv, path='figures/ANN_{}_Best_valid.png'.format(id))
+    plt.clf()
+
+    plot_roc_curve(best_model, X_test, y_test)
+    plt.savefig('figures/ANN_{}_ROC.png'.format(id))
     plt.clf()
 
     best_model.fit(X_train, y_train)
